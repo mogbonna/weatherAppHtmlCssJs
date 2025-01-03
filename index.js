@@ -1,4 +1,11 @@
-const apiKey = "9c97ec982a8706295d3b43263537043e";
+require("dotenv").config();
+const apiKey = process.env.OPENWEATHERMAP_API_KEY;
+
+if (!apiKey) {
+  console.error("API key is missing! Please set it in the .env file.");
+  process.exit(1);
+}
+
 const apiUrl =
   "https://api.openweathermap.org/data/2.5/weather?units=metric&q=";
 
@@ -12,54 +19,53 @@ async function checkWeather(city) {
     return;
   }
 
+  document.querySelector(".loading").style.display = "block"; // Show loading
+
   try {
     const response = await fetch(apiUrl + city + `&appid=${apiKey}`);
     const data = await response.json();
 
-    if (response.status === 404) {
-      document.querySelector(".error").style.display = "block";
-      document.querySelector(".weather").style.display = "none";
-    } else {
-      document.querySelector(".city").innerHTML = data.name;
-      document.querySelector(".temp").innerHTML =
-        Math.round(data.main.temp) + "°c";
-      document.querySelector(".humidity").innerHTML = data.main.humidity + "%";
-      document.querySelector(".wind").innerHTML = data.wind.speed + " km/hr";
-
-      // Update weather icon
-      switch (data.weather[0].main) {
-        case "Clouds":
-          weatherIcon.src = "images/clouds.png";
-          break;
-        case "Clear":
-          weatherIcon.src = "images/clear.png";
-          break;
-        case "Drizzle":
-          weatherIcon.src = "images/drizzle.png";
-          break;
-        case "Mist":
-          weatherIcon.src = "images/mist.png";
-          break;
-        case "Snow":
-          weatherIcon.src = "images/snow.png";
-          break;
-        case "Rain":
-          weatherIcon.src = "images/rain.png";
-          break;
-        default:
-          weatherIcon.src = "images/default.png"; // Fallback for unknown weather
-      }
-
-      document.querySelector(".weather").style.display = "block";
-      document.querySelector(".error").style.display = "none";
-      searchBox.value = ""; // Clear search box
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to fetch weather data.");
     }
+
+    // Update UI with weather data
+    document.querySelector(".city").innerHTML = data.name || "Unknown City";
+    document.querySelector(".temp").innerHTML =
+      Math.round(data.main.temp) + "°c";
+    document.querySelector(".humidity").innerHTML =
+      (data.main.humidity || 0) + "%";
+    document.querySelector(".wind").innerHTML =
+      (data.wind.speed || 0) + " km/hr";
+
+    // Update weather icon
+    const weatherType = data.weather[0]?.main || "Unknown";
+    const iconMap = {
+      Clouds: "images/clouds.png",
+      Clear: "images/clear.png",
+      Drizzle: "images/drizzle.png",
+      Mist: "images/mist.png",
+      Snow: "images/snow.png",
+      Rain: "images/rain.png",
+    };
+    weatherIcon.src = iconMap[weatherType] || "images/default.png";
+
+    document.querySelector(".weather").style.display = "block";
+    document.querySelector(".error").style.display = "none";
+    searchBox.value = ""; // Clear search box
   } catch (error) {
     console.error("Error fetching weather data:", error);
-    alert("Unable to fetch weather data. Please try again later.");
+    document.querySelector(".error").style.display = "block";
+    document.querySelector(".weather").style.display = "none";
+  } finally {
+    document.querySelector(".loading").style.display = "none"; // Hide loading
   }
 }
 
-searchBtn.addEventListener("click", () => {
-  checkWeather(searchBox.value);
+// Add event listeners
+searchBtn.addEventListener("click", () => checkWeather(searchBox.value));
+searchBox.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    checkWeather(searchBox.value);
+  }
 });
